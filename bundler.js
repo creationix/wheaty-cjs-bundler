@@ -16,7 +16,7 @@ function wrapper(main, defs) {
     var dirname = filename.substring(0, filename.lastIndexOf("/"));
     var def = defs[filename];
     if (!def) throw new Error("No such module: " + filename);
-    def(module, module.exports, dirname, filename);
+    def(require, module, module.exports, dirname, filename);
     return module.exports;
   }
 }
@@ -36,7 +36,7 @@ module.exports = function (main, libPaths) {
     var js = "(" + wrapper.toString() + "(" + JSON.stringify(main) + ", {" +
       defs.map(function (def) {
         return JSON.stringify(def.path) +
-          ": function (module, exports, __dirname, __filename) {\n" +
+          ": function (require, module, exports, __dirname, __filename) {\n" +
           def.code + "\n},\n";
       }).join("") + "}));\n";
 
