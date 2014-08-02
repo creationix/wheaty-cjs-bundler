@@ -3,7 +3,7 @@
 var pathJoin = require('path').join;
 var mine = require('mine');
 var modes = require('js-git/lib/modes');
-var regenerator = require('../lib/tedit-regenerator/regenerator-bundle')
+var regenerator = require('../tedit-regenerator/regenerator-bundle')
 
 // This function is run on the remote side.  Here it's simply
 // stringified and sent as part of the bundle.
