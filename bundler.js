@@ -3,11 +3,14 @@
 var pathJoin = require('path').join;
 var mine = require('mine');
 var modes = require('js-git/lib/modes');
+var regenerator = require('../lib/tedit-regenerator/regenerator-bundle')
 
 // This function is run on the remote side.  Here it's simply
 // stringified and sent as part of the bundle.
-function wrapper(main, defs) {
+function wrapper(main) {
   var modules = {};
+  var defs = {/***/};
+  /***/
   require(main);
   function require(filename) {
     var module = modules[filename];
@@ -16,13 +19,14 @@ function wrapper(main, defs) {
     var dirname = filename.substring(0, filename.lastIndexOf("/"));
     var def = defs[filename];
     if (!def) throw new Error("No such module: " + filename);
-    def(require, module, module.exports, dirname, filename);
+    def(module, module.exports, dirname, filename);
     return module.exports;
   }
 }
 
-module.exports = function (main, libPaths) {
-  return function* (pathToEntry) {
+module.exports = function (main, paths) {
+  return function* (pathToEntry, url) {
+    var regenerate = /\?.*\bregenerate\b/.test(url);
 
     var started = {};
 
@@ -32,15 +36,35 @@ module.exports = function (main, libPaths) {
     // Reverse them to put main at top.
     defs.reverse();
 
+    var needsRuntime = false;
+    defs = defs.map(mapDef).join("");
+
     // Apply the template
-    var js = "(" + wrapper.toString() + "(" + JSON.stringify(main) + ", {" +
-      defs.map(function (def) {
-        return JSON.stringify(def.path) +
-          ": function (require, module, exports, __dirname, __filename) {\n" +
-          def.code + "\n},\n";
-      }).join("") + "}));\n";
+    var js = "(" + wrapper.toString() + "(" + JSON.stringify(main) + ", ));\n";
+
+    var parts = wrapper.toString().split("/***/");
+    var runtime = "";
+    if (needsRuntime) {
+      var meta = yield* pathToEntry("lib/tedit-regenerator/runtime.js");
+      runtime = yield meta.repo.loadAs("text", meta.hash);
+    }
+
+    js = "(" + parts[0] + defs + parts[1] + runtime + parts[2] +
+      "(" + JSON.stringify(main) + "));\n";
 
     return [200, {"Content-Type":"application/javascript"}, js];
+
+    function mapDef(def) {
+      var code = def.code;
+      if (regenerate && /(?:\bfunction\s*\*|\byield\b)/.test(code)) {
+        code = regenerator(code);
+        needsRuntime = true;
+      }
+      return JSON.stringify(def.path) +
+        ": function (module, exports, __dirname, __filename) {\n" +
+        code + "\n},\n";
+    }
+
 
     function* load(path) {
       if (started[path]) return;
@@ -97,8 +121,9 @@ module.exports = function (main, libPaths) {
     }
 
     function* findModule(base, name) {
-      for (var i = 0; i < libPaths.length; i++) {
-        var result = yield* findLocal(pathJoin(libPaths[i], name));
+      if (!paths) return;
+      for (var i = 0; i < paths.length; i++) {
+        var result = yield* findLocal(pathJoin(paths[i], name));
         if (result) return result;
       }
     }
