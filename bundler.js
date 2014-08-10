@@ -3,7 +3,8 @@
 var pathJoin = require('path').join;
 var mine = require('mine');
 var modes = require('js-git/lib/modes');
-var regenerator = require('../tedit-regenerator/regenerator-bundle')
+var pathJoin = require('path').join;
+var regenerator = require('../tedit-regenerator/regenerator-bundle');
 
 // This function is run on the remote side.  Here it's simply
 // stringified and sent as part of the bundle.
@@ -45,7 +46,7 @@ module.exports = function (main, paths) {
     var parts = wrapper.toString().split("/***/");
     var runtime = "";
     if (needsRuntime) {
-      var meta = yield* pathToEntry("lib/tedit-regenerator/runtime.js");
+      var meta = yield* pathToEntry(pathJoin(__dirname, "../tedit-regenerator/runtime.js"));
       runtime = yield meta.repo.loadAs("text", meta.hash);
     }
 
