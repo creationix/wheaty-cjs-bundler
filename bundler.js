@@ -13,10 +13,10 @@ function wrapper(main) {
   var defs = {/***/};
   /***/
   require(main);
-  function require(filename) {
+  function require(filename, parent) {
     var module = modules[filename];
     if (module) return module.exports;
-    module = modules[filename] = {exports:{}};
+    module = modules[filename] = {exports:{},parent:parent};
     var dirname = filename.substring(0, filename.lastIndexOf("/"));
     var def = defs[filename];
     if (!def) throw new Error("No such module: " + filename);
@@ -89,7 +89,9 @@ module.exports = function (main, paths) {
           var offset = dep.offset;
           code = code.substring(0, offset) +
             depName +
-            code.substring(offset + dep.name.length);
+            code.substring(offset + dep.name.length, offset + dep.name.length + 1) +
+            ", module" +
+            code.substring(offset + dep.name.length + 1);
         }
       }
       defs.push({path: path, code: code});
